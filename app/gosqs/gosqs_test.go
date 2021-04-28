@@ -1220,12 +1220,9 @@ func TestSendingAndReceivingFromFIFOQueueReturnsSameMessageOnError(t *testing.T)
 	done := make(chan struct{}, 0)
 	go PeriodicTasks(1*time.Second, done)
 
+	// Arrange
 	// create a queue
-	req, err := http.NewRequest("POST", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	assert, rr, req := prepareRequest(t, "POST", "/", nil)
 	form := url.Values{}
 	form.Add("Action", "CreateQueue")
 	form.Add("QueueName", "requeue-reset.fifo")
@@ -1233,21 +1230,21 @@ func TestSendingAndReceivingFromFIFOQueueReturnsSameMessageOnError(t *testing.T)
 	form.Add("Attribute.1.Value", "2")
 	form.Add("Version", "2012-11-05")
 	req.PostForm = form
+	handler := http.HandlerFunc(CreateQueue)
 
-	rr := httptest.NewRecorder()
-	http.HandlerFunc(CreateQueue).ServeHTTP(rr, req)
+	// Act
+	handler.ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got \n%v want %v",
-			status, http.StatusOK)
-	}
+	// Asserts
+	assert.Equalf(
+		http.StatusOK,
+		rr.Code,
+		"handler returned wrong status code")
 
+	// Arrange
 	// send a message
-	req, err = http.NewRequest("POST", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	req, err := http.NewRequest("POST", "/", nil)
+	assert.NoError(err)
 	form = url.Values{}
 	form.Add("Action", "SendMessage")
 	form.Add("QueueUrl", "http://localhost:4100/queue/requeue-reset.fifo")
@@ -1255,21 +1252,22 @@ func TestSendingAndReceivingFromFIFOQueueReturnsSameMessageOnError(t *testing.T)
 	form.Add("MessageGroupId", "GROUP-X")
 	form.Add("Version", "2012-11-05")
 	req.PostForm = form
-
 	rr = httptest.NewRecorder()
-	http.HandlerFunc(SendMessage).ServeHTTP(rr, req)
+	handler = http.HandlerFunc(SendMessage)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got \n%v want %v",
-			status, http.StatusOK)
-	}
+	// Act
+	handler.ServeHTTP(rr, req)
 
+	// Asserts
+	assert.Equalf(
+		http.StatusOK,
+		rr.Code,
+		"handler returned wrong status code")
+
+	// Arrange
 	// send a message
 	req, err = http.NewRequest("POST", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	assert.NoError(err)
 	form = url.Values{}
 	form.Add("Action", "SendMessage")
 	form.Add("QueueUrl", "http://localhost:4100/queue/requeue-reset.fifo")
@@ -1277,136 +1275,148 @@ func TestSendingAndReceivingFromFIFOQueueReturnsSameMessageOnError(t *testing.T)
 	form.Add("MessageGroupId", "GROUP-X")
 	form.Add("Version", "2012-11-05")
 	req.PostForm = form
-
 	rr = httptest.NewRecorder()
-	http.HandlerFunc(SendMessage).ServeHTTP(rr, req)
+	handler = http.HandlerFunc(SendMessage)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got \n%v want %v",
-			status, http.StatusOK)
-	}
+	// Act
+	handler.ServeHTTP(rr, req)
 
+	// Asserts
+	assert.Equalf(
+		http.StatusOK,
+		rr.Code,
+		"handler returned wrong status code")
+
+	// Arrange
 	// receive message
 	req, err = http.NewRequest("POST", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	assert.NoError(err)
 	form = url.Values{}
 	form.Add("Action", "ReceiveMessage")
 	form.Add("QueueUrl", "http://localhost:4100/queue/requeue-reset.fifo")
 	form.Add("Version", "2012-11-05")
 	req.PostForm = form
-
 	rr = httptest.NewRecorder()
-	http.HandlerFunc(ReceiveMessage).ServeHTTP(rr, req)
+	handler = http.HandlerFunc(ReceiveMessage)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got \n%v want %v",
-			status, http.StatusOK)
-	}
-	if ok := strings.Contains(rr.Body.String(), "<Message>"); !ok {
-		t.Fatal("handler should return a message")
-	}
+	// Act
+	handler.ServeHTTP(rr, req)
+
+	// Asserts
+	assert.Equalf(
+		http.StatusOK,
+		rr.Code,
+		"handler returned wrong status code")
+	const expected = "<Message>"
+	assert.Containsf(
+		rr.Body.String(),
+		expected,
+		"handler should return a message")
 
 	resp := app.ReceiveMessageResponse{}
 	err = xml.Unmarshal(rr.Body.Bytes(), &resp)
-	if err != nil {
-		t.Fatalf("unexpected unmarshal error: %s", err)
-	}
-	receiptHandleFirst := resp.Result.Message[0].ReceiptHandle
-	if string(resp.Result.Message[0].Body) != "1" {
-		t.Fatalf("should have received body 1: %s", err)
+	assert.NoError(err)
+	assert.NotEmpty(resp.Result.Message)
+	receiptHandleFirst := ""
+	if len(resp.Result.Message) > 0 {
+		receiptHandleFirst = resp.Result.Message[0].ReceiptHandle
+		assert.Equalf(
+			"1",
+			string(resp.Result.Message[0].Body),
+			"should have received body 1")
 	}
 
+	// Arrange
 	// try to receive another message and we should get none
 	req, err = http.NewRequest("POST", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	assert.NoError(err)
 	form = url.Values{}
 	form.Add("Action", "ReceiveMessage")
 	form.Add("QueueUrl", "http://localhost:4100/queue/requeue-reset.fifo")
 	form.Add("Version", "2012-11-05")
 	req.PostForm = form
-
 	rr = httptest.NewRecorder()
-	http.HandlerFunc(ReceiveMessage).ServeHTTP(rr, req)
+	handler = http.HandlerFunc(ReceiveMessage)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got \n%v want %v",
-			status, http.StatusOK)
-	}
-	if ok := strings.Contains(rr.Body.String(), "<Message>"); ok {
-		t.Fatal("handler should not return a message")
-	}
+	// Act
+	handler.ServeHTTP(rr, req)
 
-	if len(app.SyncQueues.Queues["requeue-reset.fifo"].FIFOMessages) != 1 {
-		t.Fatal("there should be only 1 group locked")
-	}
+	// Asserts
+	assert.Equalf(
+		http.StatusOK,
+		rr.Code,
+		"handler returned wrong status code")
+	assert.NotContainsf(
+		rr.Body.String(),
+		expected,
+		"handler should not return a message")
 
-	if app.SyncQueues.Queues["requeue-reset.fifo"].FIFOMessages["GROUP-X"] != 0 {
-		t.Fatal("there should be GROUP-X locked")
-	}
+	assert.Equalf(
+		1,
+		len(app.SyncQueues.Queues["requeue-reset.fifo"].FIFOMessages),
+		"there should be only 1 group locked")
+	assert.Equalf(
+		0,
+		app.SyncQueues.Queues["requeue-reset.fifo"].FIFOMessages["GROUP-X"],
+		"there should be GROUP-X locked")
 
+	// Arrange
 	// remove message
 	req, err = http.NewRequest("POST", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	assert.NoError(err)
 	form = url.Values{}
 	form.Add("Action", "DeleteMessage")
 	form.Add("QueueUrl", "http://localhost:4100/queue/requeue-reset.fifo")
 	form.Add("ReceiptHandle", receiptHandleFirst)
 	form.Add("Version", "2012-11-05")
 	req.PostForm = form
-
 	rr = httptest.NewRecorder()
-	http.HandlerFunc(DeleteMessage).ServeHTTP(rr, req)
+	handler = http.HandlerFunc(DeleteMessage)
 
-	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got \n%v want %v",
-			status, http.StatusOK)
-	}
-	if len(app.SyncQueues.Queues["requeue-reset.fifo"].Messages) != 1 {
-		t.Fatal("there should be only 1 message in queue")
-	}
+	// Act
+	handler.ServeHTTP(rr, req)
+
+	// Asserts
+	assert.Equalf(
+		http.StatusOK,
+		rr.Code,
+		"handler returned wrong status code")
+	assert.Equalf(
+		1,
+		len(app.SyncQueues.Queues["requeue-reset.fifo"].Messages),
+		"there should be only 1 message in queue")
 
 	// receive message - loop until visibility timeouts
 	for {
 		req, err = http.NewRequest("POST", "/", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		assert.NoError(err)
 		form = url.Values{}
 		form.Add("Action", "ReceiveMessage")
 		form.Add("QueueUrl", "http://localhost:4100/queue/requeue-reset.fifo")
 		form.Add("Version", "2012-11-05")
 		req.PostForm = form
-
 		rr = httptest.NewRecorder()
-		http.HandlerFunc(ReceiveMessage).ServeHTTP(rr, req)
+		handler = http.HandlerFunc(ReceiveMessage)
 
-		if status := rr.Code; status != http.StatusOK {
-			t.Errorf("handler returned wrong status code: got \n%v want %v",
-				status, http.StatusOK)
-		}
-		if ok := strings.Contains(rr.Body.String(), "<Message>"); !ok {
+		// Act
+		handler.ServeHTTP(rr, req)
+
+		// Asserts
+		assert.Equalf(
+			http.StatusOK,
+			rr.Code,
+			"handler returned wrong status code")
+		if ok := strings.Contains(rr.Body.String(), expected); !ok {
 			continue
 		}
 
 		resp = app.ReceiveMessageResponse{}
 		err = xml.Unmarshal(rr.Body.Bytes(), &resp)
-		if err != nil {
-			t.Fatalf("unexpected unmarshal error: %s", err)
-		}
-		if string(resp.Result.Message[0].Body) != "2" {
-			t.Fatalf("should have received body 2: %s", err)
-		}
+		assert.NoError(err)
+		assert.Equalf(
+			"2",
+			string(resp.Result.Message[0].Body),
+			"should have received body 2")
 		break
 	}
 

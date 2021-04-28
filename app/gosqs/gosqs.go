@@ -441,11 +441,11 @@ func ReceiveMessage(w http.ResponseWriter, req *http.Request) {
 			}
 
 			uuid, _ := common.NewUUID()
-
 			msg := &app.SyncQueues.Queues[queueName].Messages[i]
 			if !msg.IsReadyForReceipt() {
 				continue
 			}
+
 			msg.ReceiptHandle = msg.Uuid + "#" + uuid
 			msg.ReceiptTime = time.Now().UTC()
 			msg.VisibilityTimeout = time.Now().Add(time.Duration(app.SyncQueues.Queues[queueName].TimeoutSecs) * time.Second)

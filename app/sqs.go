@@ -41,12 +41,15 @@ type Message struct {
 }
 
 func (m *Message) IsReadyForReceipt() bool {
+	now := time.Now()
 	randomLatency, err := getRandomLatency()
 	if err != nil {
 		log.Error(err)
 		return true
 	}
-	return m.SentTime.Add(randomLatency).Before(time.Now())
+
+	resultTime := m.SentTime.Add(randomLatency)
+	return resultTime.Before(now) || resultTime.Equal(now)
 }
 
 func getRandomLatency() (time.Duration, error) {
