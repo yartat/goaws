@@ -2,9 +2,12 @@ package app
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFilterPolicy_IsSatisfiedBy(t *testing.T) {
+	// Arrange
 	var tests = []struct {
 		filterPolicy      *FilterPolicy
 		messageAttributes map[string]MessageAttributeValue
@@ -48,11 +51,9 @@ func TestFilterPolicy_IsSatisfiedBy(t *testing.T) {
 		},
 	}
 
+	// Act
 	for i, tt := range tests {
 		actual := tt.filterPolicy.IsSatisfiedBy(tt.messageAttributes)
-		if tt.filterPolicy.IsSatisfiedBy(tt.messageAttributes) != tt.expected {
-			t.Errorf("#%d FilterPolicy: expected %t, actual %t", i, tt.expected, actual)
-		}
+		assert.Equalf(t, tt.expected, actual, "#%d test", i)
 	}
-
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/p4tin/goaws/app"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -17,8 +18,10 @@ const (
 // When simple message string is passed,
 // it must be used for all subscribers (no matter the protocol)
 func TestCreateMessageBody_NonJson(t *testing.T) {
-	message := "message text"
-	subject := "subject"
+	// Arrange
+	assert := assert.New(t)
+	const message = "message text"
+	const subject = "subject"
 	subs := &app.Subscription{
 		Protocol:        "sqs",
 		TopicArn:        "topic-arn",
@@ -26,179 +29,132 @@ func TestCreateMessageBody_NonJson(t *testing.T) {
 		Raw:             false,
 	}
 
+	// Act
 	snsMessage, err := CreateMessageBody(subs, message, subject, messageStructureEmpty, make(map[string]app.MessageAttributeValue))
-	if err != nil {
-		t.Fatalf(`error creating SNS message: %s`, err)
-	}
 
+	// Asserts
+	assert.NoError(err)
 	var unmarshalled map[string]interface{}
 	err = json.Unmarshal(snsMessage, &unmarshalled)
-	if err != nil {
-		t.Fatalf(`error unmarshalling SNS message "%s": %s`, snsMessage, err)
-	}
-
+	assert.NoError(err)
 	receivedMessage, ok := unmarshalled[messageKey]
-	if !ok {
-		t.Fatalf(`SNS message "%s" does not contain key "%s"`, snsMessage, messageKey)
-	}
-
-	if receivedMessage != message {
-		t.Errorf(`expected message "%s" but received "%s"`, message, receivedMessage)
-	}
-
+	assert.Truef(ok, `SNS message "%s" does not contain key "%s"`, snsMessage, messageKey)
+	assert.Equal(message, receivedMessage)
 	receivedSubject, ok := unmarshalled[subjectKey]
-	if !ok {
-		t.Fatalf(`SNS message "%s" does not contain key "%s"`, snsMessage, subjectKey)
-	}
-
-	if receivedSubject != subject {
-		t.Errorf(`expected subject "%s" but received "%s"`, subject, receivedSubject)
-	}
+	assert.Truef(ok, `SNS message "%s" does not contain key "%s"`, snsMessage, subjectKey)
+	assert.Equal(subject, receivedSubject)
 }
 
 // When no protocol specific message is passed,
 // default message must be forwarded
 func TestCreateMessageBody_OnlyDefaultValueInJson(t *testing.T) {
+	// Arrange
+	assert := assert.New(t)
 	subs := &app.Subscription{
 		Protocol:        "sqs",
 		TopicArn:        "topic-arn",
 		SubscriptionArn: "subs-arn",
 		Raw:             false,
 	}
-	message := `{"default": "default message text", "http": "HTTP message text"}`
-	subject := "subject"
+	const message = `{"default": "default message text", "http": "HTTP message text"}`
+	const subject = "subject"
 
+	// Act
 	snsMessage, err := CreateMessageBody(subs, message, subject, messageStructureJSON, nil)
-	if err != nil {
-		t.Fatalf(`error creating SNS message: %s`, err)
-	}
 
+	// Asserts
+	assert.NoError(err)
 	var unmarshalled map[string]interface{}
 	err = json.Unmarshal(snsMessage, &unmarshalled)
-	if err != nil {
-		t.Fatalf(`error unmarshalling SNS message "%s": %s`, snsMessage, err)
-	}
-
+	assert.NoError(err)
 	receivedMessage, ok := unmarshalled[messageKey]
-	if !ok {
-		t.Fatalf(`SNS message "%s" does not contain key "%s"`, snsMessage, messageKey)
-	}
-
-	expected := "default message text"
-	if receivedMessage != expected {
-		t.Errorf(`expected message "%s" but received "%s"`, expected, receivedMessage)
-	}
-
+	assert.Truef(ok, `SNS message "%s" does not contain key "%s"`, snsMessage, messageKey)
+	const expected = "default message text"
+	assert.Equal(expected, receivedMessage)
 	receivedSubject, ok := unmarshalled[subjectKey]
-	if !ok {
-		t.Fatalf(`SNS message "%s" does not contain key "%s"`, snsMessage, subjectKey)
-	}
-
-	if receivedSubject != subject {
-		t.Errorf(`expected subject "%s" but received "%s"`, subject, receivedSubject)
-	}
+	assert.Truef(ok, `SNS message "%s" does not contain key "%s"`, snsMessage, subjectKey)
+	assert.Equal(subject, receivedSubject)
 }
 
 // When only protocol specific message is passed,
 // error must be returned
 func TestCreateMessageBody_OnlySqsValueInJson(t *testing.T) {
+	// Arrange
+	assert := assert.New(t)
 	subs := &app.Subscription{
 		Protocol:        "sqs",
 		TopicArn:        "topic-arn",
 		SubscriptionArn: "subs-arn",
 		Raw:             false,
 	}
-	message := `{"sqs": "message text"}`
-	subject := "subject"
+	const message = `{"sqs": "message text"}`
+	const subject = "subject"
 
+	// Act
 	snsMessage, err := CreateMessageBody(subs, message, subject, messageStructureJSON, nil)
-	if err == nil {
-		t.Fatalf(`error expected but instead SNS message was returned: %s`, snsMessage)
-	}
+
+	// Asserts
+	assert.Errorf(err, `error expected but instead SNS message was returned: %s`, snsMessage)
 }
 
 // when both default and protocol specific messages are passed,
 // protocol specific message must be used
 func TestCreateMessageBody_BothDefaultAndSqsValuesInJson(t *testing.T) {
+	// Arrange
+	assert := assert.New(t)
 	subs := &app.Subscription{
 		Protocol:        "sqs",
 		TopicArn:        "topic-arn",
 		SubscriptionArn: "subs-arn",
 		Raw:             false,
 	}
-	message := `{"default": "default message text", "sqs": "sqs message text"}`
-	subject := "subject"
+	const message = `{"default": "default message text", "sqs": "sqs message text"}`
+	const subject = "subject"
 
+	// Act
 	snsMessage, err := CreateMessageBody(subs, message, subject, messageStructureJSON, nil)
-	if err != nil {
-		t.Fatalf(`error creating SNS message: %s`, err)
-	}
 
+	// Asserts
+	assert.NoErrorf(err, `error creating SNS message`)
 	var unmarshalled map[string]interface{}
 	err = json.Unmarshal(snsMessage, &unmarshalled)
-	if err != nil {
-		t.Fatalf(`error unmarshalling SNS message "%s": %s`, snsMessage, err)
-	}
-
+	assert.NoErrorf(err, `error unmarshalling SNS message "%s"`, snsMessage)
 	receivedMessage, ok := unmarshalled[messageKey]
-	if !ok {
-		t.Fatalf(`SNS message "%s" does not contain key "%s"`, snsMessage, messageKey)
-	}
-
-	expected := "sqs message text"
-	if receivedMessage != expected {
-		t.Errorf(`expected message "%s" but received "%s"`, expected, receivedMessage)
-	}
-
+	assert.Truef(ok, `SNS message "%s" does not contain key "%s"`, snsMessage, messageKey)
+	const expected = "sqs message text"
+	assert.Equal(expected, receivedMessage)
 	receivedSubject, ok := unmarshalled[subjectKey]
-	if !ok {
-		t.Fatalf(`SNS message "%s" does not contain key "%s"`, snsMessage, subjectKey)
-	}
-
-	if receivedSubject != subject {
-		t.Errorf(`expected subject "%s" but received "%s"`, subject, receivedSubject)
-	}
+	assert.Truef(ok, `SNS message "%s" does not contain key "%s"`, snsMessage, subjectKey)
+	assert.Equal(subject, receivedSubject)
 }
 
 // When simple message string is passed,
 // it must be used as is (even if it contains JSON)
 func TestCreateMessageBody_NonJsonContainingJson(t *testing.T) {
+	// Arrange
+	assert := assert.New(t)
 	subs := &app.Subscription{
 		Protocol:        "sns",
 		TopicArn:        "topic-arn",
 		SubscriptionArn: "subs-arn",
 		Raw:             false,
 	}
-	message := `{"default": "default message text", "sqs": "sqs message text"}`
-	subject := "subject"
+	const message = `{"default": "default message text", "sqs": "sqs message text"}`
+	const subject = "subject"
 
+	// Act
 	snsMessage, err := CreateMessageBody(subs, message, subject, "", nil)
-	if err != nil {
-		t.Fatalf(`error creating SNS message: %s`, err)
-	}
 
+	// Asserts
+	assert.NoErrorf(err, `error creating SNS message`)
 	var unmarshalled map[string]interface{}
 	err = json.Unmarshal(snsMessage, &unmarshalled)
-	if err != nil {
-		t.Fatalf(`error unmarshalling SNS message "%s": %s`, snsMessage, err)
-	}
-
+	assert.NoError(err, `error unmarshalling SNS message "%s"`, snsMessage)
 	receivedMessage, ok := unmarshalled[messageKey]
-	if !ok {
-		t.Fatalf(`SNS message "%s" does not contain key "%s"`, snsMessage, messageKey)
-	}
-
-	expected := `{"default": "default message text", "sqs": "sqs message text"}`
-	if receivedMessage != expected {
-		t.Errorf(`expected message "%s" but received "%s"`, expected, receivedMessage)
-	}
-
+	assert.Truef(ok, `SNS message "%s" does not contain key "%s"`, snsMessage, messageKey)
+	const expected = `{"default": "default message text", "sqs": "sqs message text"}`
+	assert.Equal(expected, receivedMessage)
 	receivedSubject, ok := unmarshalled[subjectKey]
-	if !ok {
-		t.Fatalf(`SNS message "%s" does not contain key "%s"`, snsMessage, subjectKey)
-	}
-
-	if receivedSubject != subject {
-		t.Errorf(`expected subject "%s" but received "%s"`, subject, receivedSubject)
-	}
+	assert.Truef(ok, `SNS message "%s" does not contain key "%s"`, snsMessage, subjectKey)
+	assert.Equal(subject, receivedSubject)
 }
