@@ -4,6 +4,7 @@ import (
 	"flag"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/p4tin/goaws/app"
@@ -17,22 +18,24 @@ import (
 
 func main() {
 	var filename string
-	var debugLevelLogging bool
-	var infoLevelLogging bool
+	var levelLogging string
 	flag.StringVar(&filename, "config", "", "config file location + name")
-	flag.BoolVar(&debugLevelLogging, "debug", false, "debug log level (default Warning)")
-	flag.BoolVar(&infoLevelLogging, "info", false, "info log level (default Warning)")
+	flag.StringVar(&levelLogging, "loglevel", "", "log level (default warning)")
 	flag.Parse()
 
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetOutput(os.Stdout)
 
-	if debugLevelLogging {
+	switch strings.ToUpper(levelLogging) {
+	case "DEBUG":
 		log.SetLevel(log.DebugLevel)
-	} else if infoLevelLogging {
+		log.Infof("Set log level to debug")
+	case "INFO":
 		log.SetLevel(log.InfoLevel)
-	} else {
+		log.Infof("Set log level to info")
+	default:
 		log.SetLevel(log.WarnLevel)
+		log.Warnf("Set log level to warning")
 	}
 
 	env := "Local"

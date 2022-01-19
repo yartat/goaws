@@ -12,4 +12,4 @@ EXPOSE 4100
 WORKDIR /
 COPY --from=build-env /goaws /
 COPY app/conf/goaws.yaml /conf/
-CMD ["/goaws"]
+CMD ["/goaws", "-loglevel=info"]
