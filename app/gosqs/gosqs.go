@@ -202,7 +202,7 @@ func SendMessage(w http.ResponseWriter, req *http.Request) {
 	}
 	app.SyncQueues.Queues[queueName].Messages = append(app.SyncQueues.Queues[queueName].Messages, msg)
 	app.SyncQueues.Unlock()
-	log.Infof("%s: Queue: %s, Message: %s", time.Now().Format("2006-01-02 15:04:05"), queueName, msg.MessageBody)
+	log.Debugf("%s: Queue: %s, Message: %s", time.Now().Format("2006-01-02 15:04:05"), queueName, msg.MessageBody)
 
 	mockRequestId, _ := common.NewUUID()
 	respStruct := app.SendMessageResponse{
@@ -337,7 +337,7 @@ func SendMessageBatch(w http.ResponseWriter, req *http.Request) {
 			SequenceNumber:         fifoSeqNumber,
 		}
 		sentEntries = append(sentEntries, se)
-		log.Infof("%s: Queue: %s, Message: %s", time.Now().Format("2006-01-02 15:04:05"), queueName, msg.MessageBody)
+		log.Debugf("%s: Queue: %s, Message: %s", time.Now().Format("2006-01-02 15:04:05"), queueName, msg.MessageBody)
 	}
 
 	mockRequestId, _ := common.NewUUID()
@@ -960,7 +960,7 @@ func GetQueueUrl(w http.ResponseWriter, req *http.Request) {
 			log.Errorf("error: %v", err)
 		}
 	} else {
-		log.Warnf("Get Queue URL: %s failed - queue does not exist", queueName)
+		log.Debugf("Get Queue URL: %s failed - queue does not exist", queueName)
 		createErrorResponse(w, req, "QueueNotFound")
 	}
 }
@@ -1025,7 +1025,7 @@ func GetQueueAttributes(w http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		app.SyncQueues.RUnlock()
-		log.Warnf("Get Queue URL: %s failed - queue does not exist", queueName)
+		log.Debugf("Get Queue URL: %s failed - queue does not exist", queueName)
 		createErrorResponse(w, req, "QueueNotFound")
 	}
 }
@@ -1064,7 +1064,7 @@ func SetQueueAttributes(w http.ResponseWriter, req *http.Request) {
 			log.Errorf("error: %v", err)
 		}
 	} else {
-		log.Warnf("Get Queue URL: %s failed - queue does not exist")
+		log.Debugf("Get Queue URL: %s failed - queue does not exist")
 		createErrorResponse(w, req, "QueueNotFound")
 	}
 	app.SyncQueues.Unlock()
